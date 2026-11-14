@@ -1,0 +1,47 @@
+[
+  {
+    "variant": "PyTorch FP32",
+    "hardware": "GPU",
+    "latency_ms": 23.7,
+    "fps": 42.1,
+    "mAP50": 0.2895,
+    "mAP50-95": 0.161,
+    "file_mb": 5.2
+  },
+  {
+    "variant": "PyTorch FP16",
+    "hardware": "GPU",
+    "latency_ms": 20.5,
+    "fps": 48.7,
+    "mAP50": 0.2896,
+    "mAP50-95": 0.1602,
+    "file_mb": 5.2
+  },
+  {
+    "variant": "ONNX FP32",
+    "hardware": "CPU",
+    "latency_ms": 30.3,
+    "fps": 33.0,
+    "mAP50": 0.2909,
+    "mAP50-95": 0.1621,
+    "file_mb": 9.4
+  },
+  {
+    "variant": "ONNX INT8 (dynamic)",
+    "hardware": "CPU",
+    "latency_ms": 56.7,
+    "fps": 17.6,
+    "mAP50": 0.2713,
+    "mAP50-95": 0.1429,
+    "file_mb": 2.7
+  },
+  {
+    "variant": "PyTorch FP32",
+    "hardware": "CPU",
+    "latency_ms": 32.8,
+    "fps": 30.5,
+    "mAP50": 0.2895,
+    "mAP50-95": 0.161,
+    "file_mb": 5.2
+  }
+]
