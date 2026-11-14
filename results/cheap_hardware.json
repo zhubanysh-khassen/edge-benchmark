@@ -1,0 +1,72 @@
+[
+  {
+    "runtime": "ONNX Runtime",
+    "precision": "FP32",
+    "imgsz": 640,
+    "model_ms": 24.4,
+    "end_to_end_ms": 32.2,
+    "mAP50": 0.2909,
+    "mAP50-95": 0.1621,
+    "size_mb": 9.4
+  },
+  {
+    "runtime": "ONNX Runtime",
+    "precision": "INT8 static S8S8",
+    "imgsz": 640,
+    "model_ms": 64.9,
+    "end_to_end_ms": 72.9,
+    "mAP50": 0.275,
+    "mAP50-95": 0.1504,
+    "size_mb": 3.0
+  },
+  {
+    "runtime": "ONNX Runtime",
+    "precision": "INT8 static U8S8",
+    "imgsz": 640,
+    "model_ms": 19.8,
+    "end_to_end_ms": 28.0,
+    "mAP50": 0.2747,
+    "mAP50-95": 0.1495,
+    "size_mb": 3.0
+  },
+  {
+    "runtime": "OpenVINO",
+    "precision": "FP32",
+    "imgsz": 640,
+    "model_ms": 20.4,
+    "end_to_end_ms": 27.4,
+    "mAP50": 0.2909,
+    "mAP50-95": 0.1621,
+    "size_mb": 9.6
+  },
+  {
+    "runtime": "OpenVINO",
+    "precision": "INT8 (NNCF)",
+    "imgsz": 320,
+    "model_ms": 4.0,
+    "end_to_end_ms": 9.0,
+    "mAP50": 0.1376,
+    "mAP50-95": 0.0697,
+    "size_mb": 3.1
+  },
+  {
+    "runtime": "OpenVINO",
+    "precision": "INT8 (NNCF)",
+    "imgsz": 480,
+    "model_ms": 6.3,
+    "end_to_end_ms": 12.1,
+    "mAP50": 0.2246,
+    "mAP50-95": 0.1192,
+    "size_mb": 3.1
+  },
+  {
+    "runtime": "OpenVINO",
+    "precision": "INT8 (NNCF)",
+    "imgsz": 640,
+    "model_ms": 9.2,
+    "end_to_end_ms": 15.8,
+    "mAP50": 0.2891,
+    "mAP50-95": 0.1601,
+    "size_mb": 3.2
+  }
+]
