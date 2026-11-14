@@ -48,16 +48,45 @@ Jetson boards are expensive, so many drone teams run the detector on a CPU (mini
 3. **The calibration method matters more than "INT8 or not".** My ONNX Runtime quantisation uses MinMax calibration: −0.012 mAP50-95. NNCF uses smarter range estimation and bias correction: only −0.002. In both cases the box-decoding part of the head is kept in float. That part mixes pixel coordinates (0–640) and scores (0–1), so one shared INT8 scale would destroy the boxes.
 4. **Input size is the strongest speed knob, but small objects pay for it.** Going from 640 to 320 px makes the model 2.3× faster but halves mAP: a 20-px pedestrian becomes about 5 px. For drone footage, a smaller model at a high resolution beats a bigger model at a low one.
 
-### NPU boards (RK3588, Hailo-8/8L)
+## Part 3: NPU boards (Rockchip RK3588, Hailo-8L), without the boards
 
-The same INT8 pipeline applies to NPU boards, compiled by each vendor's toolchain (both are Linux x86-64 only):
+Both vendors' toolchains run only on Linux x86-64 (here: WSL2 Ubuntu 22.04). Each ships a simulator or emulator of its chip, so the **accuracy** of the compiled INT8 model can be checked on a PC. **Speed** needs the real board.
+
+The scripts are in [`npu/`](npu):
+- [`rk3588.py`](npu/rk3588.py) uses rknn-toolkit2.
+- [`hailo8l.py`](npu/hailo8l.py) uses the Hailo Dataflow Compiler 3.34.
+- [`common.py`](npu/common.py) holds the shared preprocessing, decoding and scoring.
+
+**Setup.** INT8 is calibrated on 200–256 real VisDrone train images. The models are evaluated on 100 val images, confidence 0.25. A detection counts as a hit when it overlaps a ground-truth box of the same class with IoU ≥ 0.5 (the same metric as the SAHI comparison).
+
+| Model | Precision | Recall | Recall, small objects | File |
+|---|---|---|---|---|
+| ONNX FP32 on CPU (reference) | 0.652 | 0.405 | 0.268 | 9.4 MB |
+| RK3588 FP16 (simulator) | 0.653 | 0.406 | 0.269 | 7.0 MB `.rknn` |
+| RK3588 **INT8, whole graph** | **0.000** | **0.000** | **0.000** | 4.5 MB |
+| RK3588 INT8, graph cut at head convs, decode on CPU | 0.628 | 0.404 | 0.269 | 4.1 MB |
+| Hailo-8L float graph (emulator) | 0.652 | 0.405 | 0.268 | |
+| Hailo-8L INT8 + 16-bit outputs (emulator, optimization level 1) | 0.628 | 0.376 | 0.237 | 10.7 MB `.hef` |
+
+### What I learned
+
+1. **Naive INT8 of the whole graph destroys a detector.** It finds zero objects. The cause is the last layers: they concatenate box coordinates (0–640 px) with class scores (0–1), and per-tensor INT8 gives that one tensor a single scale. With a scale big enough for coordinates, every score rounds to 0.
+2. **The fix is to cut the NPU graph at the head's last convolutions.** The six raw maps (box distances and class logits at strides 8/16/32) go to the CPU, which does anchors, stride and sigmoid in float32: a few thousand multiplications, negligible on an ARM core. On RK3588 that brings INT8 to within 0.001 recall of FP32. Ultralytics' own `format=rknn` and `format=hailo` exports do the same. I checked that my host decoder matches the full ONNX model to 0.0002 px. RKNN's `auto_hybrid` (keep high-error layers in FP16) gave identical numbers on top of the cut: once the head is cut, no layer drifts enough to need it.
+3. **Hailo keeps the output layers in 16 bits (a16_w16)** because YOLO26 has no DFL: its box branch outputs raw distances that need the range. Even so, INT8 at optimization level 1 costs about 3 points of recall (−12 % on small objects). The DFC's level 2 adds quantisation-aware fine-tuning, which Hailo and Ultralytics recommend together with at least 1024 calibration images. It needs a GPU setup for the DFC (CUDA 12.5 + cuDNN 9.10).
+4. **The nano model does not fit one Hailo-8L context.** The compiler split it into 6 contexts, which the chip switches between for every frame. That lowers FPS, and Hailo's profiler cannot estimate it without runtime data from the board. For Hailo, model size against on-chip memory is a design constraint, not just accuracy.
+5. **Toolchain versions matter.** rknn-toolkit2 2.5.0 crashes on YOLO26's attention block during graph fusion, so I used 2.3.2 (Ultralytics pins `<2.5` for the same reason). The Hailo DFC needs numpy 1.26.4, and installing Ultralytics on top silently upgraded it to 2.x and broke the compiler. Pin versions.
 
 ```bash
-# Rockchip RK3588 (Orange Pi 5, Radxa Rock 5B): rknn-toolkit2
-yolo export model=best.pt format=rknn name=rk3588 quantize=8 data=VisDrone.yaml
-# Hailo-8L (Raspberry Pi AI HAT+): Hailo Dataflow Compiler 3.x, ≥1024 calibration images recommended
-yolo export model=best.pt format=hailo name=hailo8l data=VisDrone.yaml imgsz=640
+# inside Linux x86-64 / WSL2; CV_DATA points at the folder with datasets/VisDrone
+pip install "rknn-toolkit2==2.3.2" ultralytics onnxruntime
+python npu/rk3588.py --weights best.pt          # 4 RKNN variants -> ~/npu/rknn, results/rk3588_simulator.json
+pip install hailo_dataflow_compiler-3.34.0-py3-none-linux_x86_64.whl ultralytics "numpy==1.26.4" "opencv-python==4.10.0.84"
+python npu/hailo8l.py --weights best.pt --level 1  # HAR + HEF -> ~/npu/hailo, results/hailo8l_emulator.json
 ```
+
+**On the board:**
+- **RK3588:** copy the `.rknn` file and run it with `rknn-toolkit-lite2`, then decode the six outputs with `common.decode_raw`.
+- **Hailo-8L (Raspberry Pi 5 + AI HAT+):** install `hailo-all` and run the `.hef` with HailoRT. Alternatively, export with Ultralytics (`format=hailo name=hailo8l`) and call `YOLO(".../_hailo_model").predict()`.
 
 ## Run
 
@@ -75,6 +104,7 @@ Exported files (`.onnx`, `_int8.onnx`, `.engine`) go to a separate data folder, 
 
 ## Next steps
 
-- **Measure on real NPUs:** compile for RK3588 and Hailo-8L, check accuracy in the vendors' simulators, then measure FPS on the boards.
+- **Measure FPS on the real boards** (RK3588, Raspberry Pi 5 + Hailo-8L); accuracy is already checked in the simulators.
+- **Hailo optimization level 2** (fine-tuning) with 1024+ calibration images, to recover the 3 points of recall.
 - **Better calibration for ONNX Runtime:** percentile or entropy instead of MinMax, more calibration images.
 - **TensorRT FP16/INT8:** the production format on NVIDIA Jetson.

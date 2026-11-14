@@ -1,0 +1,24 @@
+{
+  "arch": "hailo8l",
+  "optimization_level": 1,
+  "calibration_images": 256,
+  "optimize_s": 823.5,
+  "compile_s": 339.1,
+  "hef_mb": 10.7,
+  "results": [
+    {
+      "model": "Hailo emulator, float (SDK_FP_OPTIMIZED)",
+      "precision": 0.6522,
+      "recall": 0.405,
+      "recall_small": 0.2684,
+      "emulator_s": 47.6
+    },
+    {
+      "model": "Hailo emulator, INT8 + a16 outputs (SDK_QUANTIZED)",
+      "precision": 0.6281,
+      "recall": 0.3758,
+      "recall_small": 0.2372,
+      "emulator_s": 364.6
+    }
+  ]
+}

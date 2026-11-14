@@ -1,0 +1,41 @@
+[
+  {
+    "model": "ONNX FP32 (reference, CPU)",
+    "precision": 0.6522,
+    "recall": 0.405,
+    "recall_small": 0.2684,
+    "sim_ms_per_image": 45.3
+  },
+  {
+    "model": "RKNN FP16",
+    "precision": 0.6528,
+    "recall": 0.4058,
+    "recall_small": 0.2691,
+    "sim_ms_per_image": 230.5,
+    "file_mb": 7.0
+  },
+  {
+    "model": "RKNN INT8, whole graph",
+    "precision": 0.0,
+    "recall": 0.0,
+    "recall_small": 0.0,
+    "sim_ms_per_image": 214.9,
+    "file_mb": 4.5
+  },
+  {
+    "model": "RKNN INT8, head cut, decode on CPU",
+    "precision": 0.6282,
+    "recall": 0.4042,
+    "recall_small": 0.2691,
+    "sim_ms_per_image": 217.4,
+    "file_mb": 4.1
+  },
+  {
+    "model": "RKNN INT8 + FP16 hybrid, head cut",
+    "precision": 0.6282,
+    "recall": 0.4042,
+    "recall_small": 0.2691,
+    "sim_ms_per_image": 204.3,
+    "file_mb": 4.1
+  }
+]
